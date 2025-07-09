@@ -1,11 +1,16 @@
 {
   "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.1.0",
     "express": "^5.1.0",
     "multer": "^2.0.1",
     "node-fetch": "^3.3.2",
-    "simple-git": "^3.28.0"
+    "simple-git": "^3.28.0",
+    "style-dictionary": "^3.8.0"
   }
 }

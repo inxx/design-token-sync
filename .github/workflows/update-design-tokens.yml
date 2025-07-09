@@ -22,30 +22,31 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd backend
         npm install
+        npm install style-dictionary
+    
+    - name: Show repository dispatch payload
+      run: |
+        echo "Repository Dispatch Payload:"
+        echo '${{ toJSON(github.event.client_payload) }}'
     
     - name: Show current tokens
       run: |
-        cd backend
         echo "Current tokens.json content:"
         head -20 style-dictionary/tokens.json
     
     - name: Build CSS from tokens
       run: |
-        cd backend
         npx style-dictionary build --config style-dictionary/config.json
     
     - name: Check if CSS file exists
       run: |
-        cd backend
         ls -la build/css/
         echo "CSS file content:"
         head -10 build/css/variables.css
     
     - name: Copy CSS file to styles directory
       run: |
-        cd backend
         mkdir -p styles
         cp build/css/variables.css styles/variables.css
         echo "Copied CSS file to styles directory"
@@ -54,7 +55,6 @@ jobs:
     - name: Check for changes
       id: check-changes
       run: |
-        cd backend
         if git diff --quiet styles/variables.css; then
           echo "No changes detected in CSS file"
           echo "has-changes=false" >> $GITHUB_OUTPUT
@@ -62,6 +62,11 @@ jobs:
           echo "Changes detected in CSS file"
           echo "has-changes=true" >> $GITHUB_OUTPUT
         fi
+    
+    - name: Show git status
+      run: |
+        git status
+        git diff --name-only
     
     - name: Create Pull Request
       if: steps.check-changes.outputs.has-changes == 'true'
@@ -78,11 +83,27 @@ jobs:
           - CSS 변수 파일 재생성
           
           트리거 시간: ${{ github.event.client_payload.timestamp }}
+          브랜치: ${{ github.event.client_payload.branch }}
+          메시지: ${{ github.event.client_payload.message }}
         branch: token-update-${{ github.run_id }}
         base: main
-        path: backend/styles/variables.css
+        path: styles/variables.css
+        delete-branch: true
     
     - name: No changes message
       if: steps.check-changes.outputs.has-changes == 'false'
       run: |
-        echo "No changes detected in CSS file, skipping PR creation" 
+        echo "No changes detected in CSS file, skipping PR creation"
+        echo "This might be because the tokens are identical to the previous version"
+    
+    - name: Show workflow summary
+      run: |
+        echo "## Workflow Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Repository Dispatch triggered: ${{ github.event.client_payload.timestamp }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Branch: ${{ github.event.client_payload.branch }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Changes detected: ${{ steps.check-changes.outputs.has-changes }}" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ steps.check-changes.outputs.has-changes }}" == "true" ]; then
+          echo "- PR created: Yes" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- PR created: No (no changes)" >> $GITHUB_STEP_SUMMARY
+        fi 
