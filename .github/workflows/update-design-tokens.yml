@@ -85,7 +85,7 @@ jobs:
           트리거 시간: ${{ github.event.client_payload.timestamp }}
           브랜치: ${{ github.event.client_payload.branch }}
           메시지: ${{ github.event.client_payload.message }}
-        branch: token-update-${{ github.run_id }}
+        branch: ${{ github.event.client_payload.branch }}
         base: main
         path: styles/variables.css
         delete-branch: true
