@@ -4,12 +4,14 @@ import simpleGit from 'simple-git'
 import { exec } from 'child_process'
 import fs from 'fs'
 import path from 'path'
+import fetch from 'node-fetch'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
 
 dotenv.config()
 const app = express()
@@ -32,7 +34,7 @@ app.post('/api/upload-token', async (req, res) => {
     exec('npx style-dictionary build --config style-dictionary/config.json', async (error) => {
       if (error) return res.status(500).json({ status: 'build_error', error: error.message })
 
-      // 3. Git 브랜치 생성 및 커밋, 푸시만 수행
+      // 3. Git 브랜치 생성 및 커밋, PR 생성
       try {
         const branch = `token-update-${Date.now()}`
         await git.checkout('main')
@@ -52,8 +54,36 @@ app.post('/api/upload-token', async (req, res) => {
         await git.commit('feat: update design tokens')
         await git.push('origin', branch)
 
-        console.log('브랜치 푸시 완료:', branch)
-        res.json({ status: 'done', branch: branch })
+        // PR 생성
+        console.log('GitHub API 호출 시작...')
+        console.log('Repository:', `${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}`)
+        console.log('Branch:', branch)
+        
+        const response = await fetch(`https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/pulls`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+            'Accept': 'application/vnd.github+json'
+          },
+          body: JSON.stringify({
+            title: '디자인 토큰 자동 업데이트',
+            head: branch,
+            base: 'main',
+            body: '업로드된 디자인 토큰으로 자동 생성된 PR입니다.'
+          })
+        })
+
+        console.log('GitHub API 응답 상태:', response.status)
+        
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('GitHub API Error:', response.status, errorText)
+          throw new Error(`PR creation failed: ${response.status} - ${errorText}`)
+        }
+        
+        console.log('PR 생성 성공!')
+
+        res.json({ status: 'done' })
       } catch (err) {
         console.error(err)
         res.status(500).json({ status: 'error', message: err.message })
