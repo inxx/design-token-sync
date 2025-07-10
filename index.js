@@ -22,8 +22,21 @@ app.use(express.json({ limit: '50mb' }))
 const upload = multer({ dest: 'tokens/' })
 const git = simpleGit()
 
+// 동시 요청 방지를 위한 플래그
+let isProcessing = false
+
 // 프론트엔드에서 호출하는 엔드포인트 개선
 app.post('/api/upload-token', async (req, res) => {
+  // 동시 요청 방지
+  if (isProcessing) {
+    return res.status(429).json({ 
+      status: 'busy', 
+      message: '이전 요청이 처리 중입니다. 잠시 후 다시 시도해주세요.' 
+    })
+  }
+  
+    isProcessing = true
+  
   try {
     console.log('토큰 업로드 시작...')
     
@@ -36,6 +49,7 @@ app.post('/api/upload-token', async (req, res) => {
     exec('npx style-dictionary build --config style-dictionary/config.json', async (error) => {
       if (error) {
         console.error('Style Dictionary 빌드 오류:', error)
+        isProcessing = false
         return res.status(500).json({ status: 'build_error', error: error.message })
       }
       
@@ -55,8 +69,10 @@ app.post('/api/upload-token', async (req, res) => {
         await git.pull('origin', 'main')
         console.log('원격 변경사항 가져오기 완료')
         
-        // 새로운 브랜치 생성
-        const branch = `token-update-${Date.now()}`
+        // 새로운 브랜치 생성 (더 고유한 이름)
+        const timestamp = Date.now()
+        const randomSuffix = Math.random().toString(36).substring(2, 8)
+        const branch = `token-update-${timestamp}-${randomSuffix}`
         await git.checkoutLocalBranch(branch)
         console.log('새 브랜치 생성:', branch)
         
@@ -100,6 +116,7 @@ app.post('/api/upload-token', async (req, res) => {
         }
         
         console.log('모든 작업 완료!')
+        isProcessing = false
         res.json({ 
           status: 'success', 
           message: '토큰 업로드 및 Git 푸시 완료. GitHub Actions가 PR을 생성합니다.',
@@ -108,12 +125,14 @@ app.post('/api/upload-token', async (req, res) => {
         
       } catch (err) {
         console.error('Git 작업 오류:', err)
+        isProcessing = false
         res.status(500).json({ status: 'git_error', message: err.message })
       }
     })
     
   } catch (err) {
     console.error('전체 오류:', err)
+    isProcessing = false
     res.status(500).json({ status: 'error', message: err.message })
   }
 })
