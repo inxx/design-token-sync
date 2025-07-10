@@ -55,7 +55,7 @@ jobs:
     - name: Check for changes
       id: check-changes
       run: |
-        if git diff --quiet styles/variables.css; then
+        if git diff --quiet build/css/variables.css; then
           echo "No changes detected in CSS file"
           echo "has-changes=false" >> $GITHUB_OUTPUT
         else
@@ -87,7 +87,7 @@ jobs:
           메시지: ${{ github.event.client_payload.message }}
         branch: ${{ github.event.client_payload.branch }}
         base: main
-        path: styles/variables.css
+        path: build/css/variables.css
         delete-branch: true
     
     - name: No changes message
