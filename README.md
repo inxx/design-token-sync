@@ -11,6 +11,7 @@ Figma에서 추출한 디자인 토큰을 동기화하고 관리하는 웹 애�
 - Style Dictionary를 통한 CSS 변수 자동 생성
 - GitHub Actions를 통한 자동 Pull Request 생성
 - Vue.js 기반 웹 인터페이스
+- Express.js 백엔드 API
 
 ## 🏗️ 프로젝트 구조
 
@@ -30,19 +31,26 @@ design-token-sync/
 │   └── tokens.json                     # Figma 디자인 토큰
 ├── styles/
 │   └── variables.css                   # 생성된 CSS 변수
+├── build/
+│   └── css/
+│       └── variables.css               # Style Dictionary 빌드 결과
 ├── index.js                            # Express API 서버
+├── package.json                        # 백엔드 의존성
 └── README.md
 ```
 
 ## 🔄 워크플로우
 
 1. **프론트엔드에서 JSON 파일 업로드**
+   - Vue.js 웹 인터페이스에서 Figma 토큰 JSON 파일 선택
 2. **백엔드 API에서 토큰 처리**
-   - JSON 파일 저장
-   - Style Dictionary로 CSS 변환
+   - JSON 파일 저장 (`style-dictionary/tokens.json`)
+   - Style Dictionary로 CSS 변환 (`build/css/variables.css`)
    - Git 브랜치 생성 및 푸시
-   - GitHub Actions 트리거
+   - GitHub Actions 트리거 (`repository_dispatch`)
 3. **GitHub Actions에서 자동 PR 생성**
+   - CSS 파일 변경사항 감지
+   - 자동 Pull Request 생성
 
 ## 🚀 실행 방법
 
@@ -61,10 +69,10 @@ GITHUB_TOKEN=your-github-personal-access-token
 ### 2. 의존성 설치
 
 ```bash
-# 루트 디렉토리
+# 백엔드 의존성 설치
 npm install
 
-# 프론트엔드
+# 프론트엔드 의존성 설치
 cd frontend
 npm install
 ```
@@ -72,10 +80,10 @@ npm install
 ### 3. 서버 실행
 
 ```bash
-# 백엔드 API 서버
+# 백엔드 API 서버 (터미널 1)
 npm start
 
-# 프론트엔드 개발 서버
+# 프론트엔드 개발 서버 (터미널 2)
 cd frontend
 npm run dev
 ```
@@ -105,33 +113,11 @@ npm run dev
 5. **자동 PR 생성 확인**
    - GitHub 저장소에서 자동 생성된 PR 확인
 
-## 📁 디자인 토큰 구조
-
-프로젝트에는 다음과 같은 디자인 토큰들이 포함되어 있습니다:
-
-### 색상 (Colors)
-- Primary, Secondary 색상
-- Gray, Blue, Indigo, Purple, Pink, Red, Orange, Yellow, Green, Teal, Cyan 팔레트
-- 각 색상은 100-900 단계로 구성
-
-### 타이포그래피 (Typography)
-- Bold, ExtraBold, SemiBold, Body 텍스트 스타일
-- H1-H6 헤딩 스타일
-- Display 텍스트 스타일
-
-### 간격 (Spacing)
-- 4px부터 48px까지의 간격 시스템
-
-### 반지름 (Radius)
-- 기본, 작은, 큰, 매우 큰, 알약 모양의 반지름
-
-### 효과 (Effects)
-- 작은, 일반, 큰 그림자 효과
 
 ## 🛠️ 기술 스택
 
 - **프론트엔드**: Vue.js 3, Vite
-- **백엔드**: Node.js, Express
+- **백엔드**: Node.js, Express.js
 - **디자인 토큰**: Style Dictionary
 - **자동화**: GitHub Actions
 - **버전 관리**: Git
@@ -153,22 +139,8 @@ npm run dev
 2. CORS 설정 확인
 3. 환경변수 설정 확인
 
-## 📝 개발 예정 사항
+### JSON 파일 업로드 오류
+1. 파일 크기 제한 확인 (현재 50MB로 설정)
+2. JSON 형식 유효성 확인
+3. 서버 로그 확인
 
-- [ ] 다중 토큰 파일 지원
-- [ ] 토큰 미리보기 기능
-- [ ] 토큰 검증 기능
-- [ ] Slack/Discord 알림 연동
-- [ ] 토큰 히스토리 관리
-
-## 🤝 기여하기
-
-1. 이 저장소를 포크합니다
-2. 새로운 기능 브랜치를 생성합니다 (`git checkout -b feature/amazing-feature`)
-3. 변경사항을 커밋합니다 (`git commit -m 'Add some amazing feature'`)
-4. 브랜치에 푸시합니다 (`git push origin feature/amazing-feature`)
-5. Pull Request를 생성합니다
-
-## 📄 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다.
