@@ -1,75 +1,23 @@
-name: Update Design Tokens
+name: Create PR for Design Token
 
 on:
   repository_dispatch:
     types: [update-design-tokens]
 
 jobs:
-  update-tokens:
+  create-pr:
     runs-on: ubuntu-latest
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-    
-    - name: Install dependencies
+
+    - name: Set safe.directory
       run: |
-        npm install
-        npm install style-dictionary
-    
-    - name: Show repository dispatch payload
-      run: |
-        echo "Repository Dispatch Payload:"
-        echo '${{ toJSON(github.event.client_payload) }}'
-    
-    - name: Show current tokens
-      run: |
-        echo "Current tokens.json content:"
-        head -20 style-dictionary/tokens.json
-    
-    - name: Build CSS from tokens
-      run: |
-        npx style-dictionary build --config style-dictionary/config.json
-    
-    - name: Check if CSS file exists
-      run: |
-        ls -la build/css/
-        echo "CSS file content:"
-        head -10 build/css/variables.css
-    
-    - name: Copy CSS file to styles directory
-      run: |
-        mkdir -p styles
-        cp build/css/variables.css styles/variables.css
-        echo "Copied CSS file to styles directory"
-        ls -la styles/
-    
-    - name: Check for changes
-      id: check-changes
-      run: |
-        if git diff --quiet styles/variables.css; then
-          echo "No changes detected in CSS file"
-          echo "has-changes=false" >> $GITHUB_OUTPUT
-        else
-          echo "Changes detected in CSS file"
-          echo "has-changes=true" >> $GITHUB_OUTPUT
-        fi
-    
-    - name: Show git status
-      run: |
-        git status
-        git diff --name-only
-    
+        git config --global --add safe.directory /home/runner/work/design-token-sync/design-token-sync
+
     - name: Create Pull Request
-      if: steps.check-changes.outputs.has-changes == 'true'
       uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -77,33 +25,10 @@ jobs:
         title: '디자인 토큰 자동 업데이트'
         body: |
           업로드된 디자인 토큰으로 자동 생성된 PR입니다.
-          
-          변경사항:
-          - 디자인 토큰 업데이트
-          - CSS 변수 파일 재생성
-          
+
           트리거 시간: ${{ github.event.client_payload.timestamp }}
           브랜치: ${{ github.event.client_payload.branch }}
           메시지: ${{ github.event.client_payload.message }}
         branch: ${{ github.event.client_payload.branch }}
         base: main
-        path: styles/variables.css
-        delete-branch: true
-    
-    - name: No changes message
-      if: steps.check-changes.outputs.has-changes == 'false'
-      run: |
-        echo "No changes detected in CSS file, skipping PR creation"
-        echo "This might be because the tokens are identical to the previous version"
-    
-    - name: Show workflow summary
-      run: |
-        echo "## Workflow Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- Repository Dispatch triggered: ${{ github.event.client_payload.timestamp }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Branch: ${{ github.event.client_payload.branch }}" >> $GITHUB_STEP_SUMMARY
-        echo "- Changes detected: ${{ steps.check-changes.outputs.has-changes }}" >> $GITHUB_STEP_SUMMARY
-        if [ "${{ steps.check-changes.outputs.has-changes }}" == "true" ]; then
-          echo "- PR created: Yes" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "- PR created: No (no changes)" >> $GITHUB_STEP_SUMMARY
-        fi 
+        delete-branch: true 
