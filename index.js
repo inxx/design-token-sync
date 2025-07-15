@@ -56,20 +56,17 @@ app.post('/api/upload-token', async (req, res) => {
       console.log('CSS 빌드 완료')
 
       // CSS 파일 복사
-      try {
-        fs.copyFileSync(
-          path.resolve('build/css/variables.css'),
-          path.resolve('styles/variables.css')
-        )
-        console.log('CSS 파일 복사 완료')
-      } catch (copyErr) {
-        console.error('CSS 파일 복사 오류:', copyErr)
-        isProcessing = false
-        return res.status(500).json({ status: 'copy_error', error: copyErr.message })
-      }
+      // (복사 코드 제거됨)
 
       // 3. Git 작업
       try {
+        // 브랜치 전환 전에 변경사항이 있으면 임시 커밋
+        const status = await git.status();
+        if (status.files.length > 0) {
+          await git.add('.');
+          await git.commit('chore: temp commit before branch switch');
+          console.log('임시 커밋 완료');
+        }
         // 현재 브랜치 확인
         const currentBranch = await git.branch()
         console.log('현재 브랜치:', currentBranch.current)
