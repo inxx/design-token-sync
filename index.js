@@ -55,6 +55,19 @@ app.post('/api/upload-token', async (req, res) => {
       
       console.log('CSS 빌드 완료')
 
+      // CSS 파일 복사
+      try {
+        fs.copyFileSync(
+          path.resolve('build/css/variables.css'),
+          path.resolve('styles/variables.css')
+        )
+        console.log('CSS 파일 복사 완료')
+      } catch (copyErr) {
+        console.error('CSS 파일 복사 오류:', copyErr)
+        isProcessing = false
+        return res.status(500).json({ status: 'copy_error', error: copyErr.message })
+      }
+
       // 3. Git 작업
       try {
         // 현재 브랜치 확인
@@ -77,8 +90,8 @@ app.post('/api/upload-token', async (req, res) => {
         console.log('새 브랜치 생성:', branch)
         
         // 변경사항 스테이징
-        await git.add(['style-dictionary/tokens.json'])
-        console.log('tokens.json 스테이징 완료')
+        await git.add(['style-dictionary/tokens.json', 'styles/variables.css'])
+        console.log('tokens.json, variables.css 스테이징 완료')
         
         // 커밋
         await git.commit('feat: update design tokens')
