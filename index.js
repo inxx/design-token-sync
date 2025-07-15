@@ -8,6 +8,7 @@ import fetch from 'node-fetch'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import { fileURLToPath } from 'url'
+import { execSync } from 'child_process'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -37,107 +38,83 @@ app.post('/api/upload-token', async (req, res) => {
   
     isProcessing = true
   
+  let branch = null
   try {
     console.log('토큰 업로드 시작...')
     
-    // 1. JSON 파일로 저장
+    // 1. main 브랜치로 체크아웃 및 최신화
+    await git.checkout('main')
+    console.log('main 브랜치로 체크아웃 완료')
+    await git.pull('origin', 'main')
+    console.log('원격 변경사항 가져오기 완료')
+
+    // 2. 새 브랜치 생성
+    const timestamp = Date.now()
+    const randomSuffix = Math.random().toString(36).substring(2, 8)
+    branch = `token-update-${timestamp}-${randomSuffix}`
+    await git.checkoutLocalBranch(branch)
+    console.log('새 브랜치 생성:', branch)
+
+    // 3. JSON 파일로 저장
     const destPath = path.resolve('style-dictionary', 'tokens.json')
     fs.writeFileSync(destPath, JSON.stringify(req.body, null, 2), 'utf-8')
     console.log('JSON 파일 저장 완료:', destPath)
 
-    // 2. Style Dictionary 빌드
-    exec('npx style-dictionary build --config style-dictionary/config.json', async (error) => {
-      if (error) {
-        console.error('Style Dictionary 빌드 오류:', error)
-        isProcessing = false
-        return res.status(500).json({ status: 'build_error', error: error.message })
-      }
-      
+    // 4. Style Dictionary 빌드 (동기)
+    try {
+      execSync('npx style-dictionary build --config style-dictionary/config.json', { stdio: 'inherit' })
       console.log('CSS 빌드 완료')
+    } catch (error) {
+      console.error('Style Dictionary 빌드 오류:', error)
+      isProcessing = false
+      return res.status(500).json({ status: 'build_error', error: error.message })
+    }
 
-      // CSS 파일 복사
-      // (복사 코드 제거됨)
+    // 5. 변경사항 스테이징 (두 파일 모두)
+    await git.add(['style-dictionary/tokens.json', 'styles/variables.css'])
+    console.log('tokens.json, variables.css 스테이징 완료')
 
-      // 3. Git 작업
-      try {
-        // 브랜치 전환 전에 변경사항이 있으면 임시 커밋
-        const status = await git.status();
-        if (status.files.length > 0) {
-          await git.add('.');
-          await git.commit('chore: temp commit before branch switch');
-          console.log('임시 커밋 완료');
+    // 6. 커밋
+    await git.commit('feat: update design tokens')
+    console.log('커밋 완료')
+
+    // 7. 푸시 (main 브랜치에는 더 이상 직접 푸시하지 않음)
+    await git.push('origin', branch)
+    console.log('PR 브랜치로만 푸시 완료:', branch)
+
+    // 8. GitHub Actions 트리거 (repository_dispatch)
+    console.log('GitHub Actions 트리거 시작...')
+    const dispatchResponse = await fetch(`https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/dispatches`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: JSON.stringify({
+        event_type: 'update-design-tokens',
+        client_payload: {
+          branch: branch,
+          timestamp: new Date().toISOString(),
+          message: '디자인 토큰 업데이트'
         }
-        // 현재 브랜치 확인
-        const currentBranch = await git.branch()
-        console.log('현재 브랜치:', currentBranch.current)
-        
-        // main 브랜치로 체크아웃
-        await git.checkout('main')
-        console.log('main 브랜치로 체크아웃 완료')
-        
-        // 원격에서 최신 변경사항 가져오기
-        await git.pull('origin', 'main')
-        console.log('원격 변경사항 가져오기 완료')
-        
-        // 새로운 브랜치 생성 (더 고유한 이름)
-        const timestamp = Date.now()
-        const randomSuffix = Math.random().toString(36).substring(2, 8)
-        const branch = `token-update-${timestamp}-${randomSuffix}`
-        await git.checkoutLocalBranch(branch)
-        console.log('새 브랜치 생성:', branch)
-        
-        // 변경사항 스테이징
-        await git.add(['style-dictionary/tokens.json', 'styles/variables.css'])
-        console.log('tokens.json, variables.css 스테이징 완료')
-        
-        // 커밋
-        await git.commit('feat: update design tokens')
-        console.log('커밋 완료')
-        
-        // 푸시
-        await git.push('origin', branch)
-        console.log('푸시 완료:', branch)
-        
-        // 4. GitHub Actions 트리거 (repository_dispatch)
-        console.log('GitHub Actions 트리거 시작...')
-        const dispatchResponse = await fetch(`https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/dispatches`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,
-            'Accept': 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28'
-          },
-          body: JSON.stringify({
-            event_type: 'update-design-tokens',
-            client_payload: {
-              branch: branch,
-              timestamp: new Date().toISOString(),
-              message: '디자인 토큰 업데이트'
-            }
-          })
-        })
-        
-        console.log('GitHub Actions 트리거 응답:', dispatchResponse.status)
-        
-        if (!dispatchResponse.ok) {
-          const errorText = await dispatchResponse.text()
-          console.error('GitHub Actions 트리거 오류:', dispatchResponse.status, errorText)
-          // 트리거 실패해도 Git 작업은 성공했으므로 성공으로 응답
-        }
-        
-        console.log('모든 작업 완료!')
-        isProcessing = false
-        res.json({ 
-          status: 'success', 
-          message: '토큰 업로드 및 Git 푸시 완료. GitHub Actions가 PR을 생성합니다.',
-          branch: branch
-        })
-        
-      } catch (err) {
-        console.error('Git 작업 오류:', err)
-        isProcessing = false
-        res.status(500).json({ status: 'git_error', message: err.message })
-      }
+      })
+    })
+    
+    console.log('GitHub Actions 트리거 응답:', dispatchResponse.status)
+    
+    if (!dispatchResponse.ok) {
+      const errorText = await dispatchResponse.text()
+      console.error('GitHub Actions 트리거 오류:', dispatchResponse.status, errorText)
+      // 트리거 실패해도 Git 작업은 성공했으므로 성공으로 응답
+    }
+    
+    console.log('모든 작업 완료!')
+    isProcessing = false
+    res.json({ 
+      status: 'success', 
+      message: '토큰 업로드 및 Git 푸시 완료. GitHub Actions가 PR을 생성합니다.',
+      branch: branch
     })
     
   } catch (err) {
