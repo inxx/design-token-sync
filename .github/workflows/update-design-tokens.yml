@@ -53,17 +53,14 @@ jobs:
           echo "Branch $BRANCH_NAME not found"
         fi
 
-    - name: Create Pull Request using GitHub CLI
+    - name: Create Pull Request using GitHub API
       if: steps.check_branch.outputs.branch_exists == 'true' && steps.check_branch.outputs.has_changes == 'true'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         BRANCH_NAME="${{ github.event.client_payload.branch }}"
         
-        # PR 생성 (라벨 없이)
-        PR_URL=$(gh pr create \
-          --title "🎨 디자인 토큰 자동 업데이트" \
-          --body "## 📋 변경사항
+        # PR 생성 데이터 준비
+        PR_BODY=$(cat <<EOF
+        ## 📋 변경사항
         업로드된 디자인 토큰으로 자동 생성된 PR입니다.
 
         ### 📊 상세정보
@@ -81,15 +78,44 @@ jobs:
         - [x] 빌드 검증 완료
 
         ---
-        🤖 이 PR은 자동으로 생성되었습니다." \
-          --base main \
-          --head $BRANCH_NAME)
+        🤖 이 PR은 자동으로 생성되었습니다.
+        EOF
+        )
         
-        echo "✅ PR 생성 완료: $PR_URL"
+        # GitHub API를 사용하여 PR 생성
+        PR_RESPONSE=$(curl -s -X POST \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/pulls \
+          -d "{
+            \"title\": \"🎨 디자인 토큰 자동 업데이트\",
+            \"body\": $(echo "$PR_BODY" | jq -R -s .),
+            \"head\": \"$BRANCH_NAME\",
+            \"base\": \"main\"
+          }")
         
-        # 라벨 추가 시도 (실패해도 무시)
-        echo "라벨 추가 시도..."
-        gh pr edit $PR_URL --add-label "design-tokens,auto-generated" || echo "⚠️ 라벨 추가 실패 (무시)"
+        # PR 생성 결과 확인
+        if echo "$PR_RESPONSE" | grep -q '"number"'; then
+          PR_NUMBER=$(echo "$PR_RESPONSE" | grep -o '"number":[0-9]*' | grep -o '[0-9]*')
+          PR_URL=$(echo "$PR_RESPONSE" | grep -o '"html_url":"[^"]*' | cut -d'"' -f4)
+          echo "✅ PR #$PR_NUMBER 생성 완료: $PR_URL"
+          
+          # 라벨 추가
+          echo "라벨 추가 중..."
+          curl -s -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/labels \
+            -d '{"labels": ["design-tokens", "auto-generated"]}' || echo "⚠️ 라벨 추가 실패 (무시)"
+          
+          echo "🎉 PR 생성 및 라벨 추가 완료"
+        else
+          echo "❌ PR 생성 실패:"
+          echo "$PR_RESPONSE"
+          exit 1
+        fi
 
     - name: Handle no changes case
       if: steps.check_branch.outputs.branch_exists == 'true' && steps.check_branch.outputs.has_changes == 'false'
