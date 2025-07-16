@@ -12,12 +12,12 @@ jobs:
   create-pr:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
+    - name: Checkout main branch
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
-        ref: ${{ github.event.client_payload.branch }}
+        ref: main
 
     - name: Set safe.directory
       run: |
@@ -28,45 +28,72 @@ jobs:
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Create Pull Request
-      id: create_pr
-      uses: peter-evans/create-pull-request@v5
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: 'feat: update design tokens'
-        title: '🎨 디자인 토큰 자동 업데이트'
-        body: |
-          ## 📋 변경사항
-          업로드된 디자인 토큰으로 자동 생성된 PR입니다.
-
-          ### 📊 상세정보
-          - **트리거 시간**: ${{ github.event.client_payload.timestamp }}
-          - **브랜치**: ${{ github.event.client_payload.branch }}
-          - **메시지**: ${{ github.event.client_payload.message }}
-
-          ### 🔧 변경된 파일
-          - `style-dictionary/tokens.json`: 새로운 디자인 토큰
-          - `styles/variables.css`: 자동 생성된 CSS 변수
-
-          ### ✅ 체크리스트
-          - [x] 디자인 토큰 JSON 파일 업데이트
-          - [x] CSS 변수 자동 생성 완료
-          - [x] 빌드 검증 완료
-
-          ---
-          🤖 이 PR은 자동으로 생성되었습니다.
-        branch: ${{ github.event.client_payload.branch }}
-        base: main
-        delete-branch: true
-        labels: |
-          design-tokens
-          auto-generated
-
-    - name: Check PR creation result
+    - name: Check if branch exists and get changes
+      id: check_branch
       run: |
-        if [ "${{ steps.create_pr.outputs.pull-request-number }}" != "" ]; then
-          echo "✅ PR #${{ steps.create_pr.outputs.pull-request-number }} 생성 완료"
-          echo "🔗 PR URL: ${{ steps.create_pr.outputs.pull-request-url }}"
+        BRANCH_NAME="${{ github.event.client_payload.branch }}"
+        echo "Checking branch: $BRANCH_NAME"
+        
+        # 브랜치가 존재하는지 확인
+        if git fetch origin $BRANCH_NAME; then
+          echo "branch_exists=true" >> $GITHUB_OUTPUT
+          
+          # 브랜치 간 차이 확인
+          CHANGED_FILES=$(git diff --name-only origin/main origin/$BRANCH_NAME)
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes found in:"
+            echo "$CHANGED_FILES"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes detected between main and $BRANCH_NAME"
+          fi
         else
-          echo "ℹ️ 변경사항이 없어 PR을 생성하지 않았습니다."
-        fi 
+          echo "branch_exists=false" >> $GITHUB_OUTPUT
+          echo "Branch $BRANCH_NAME not found"
+        fi
+
+    - name: Create Pull Request using GitHub CLI
+      if: steps.check_branch.outputs.branch_exists == 'true' && steps.check_branch.outputs.has_changes == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        BRANCH_NAME="${{ github.event.client_payload.branch }}"
+        
+        # PR 생성
+        gh pr create \
+          --title "🎨 디자인 토큰 자동 업데이트" \
+          --body "## 📋 변경사항
+        업로드된 디자인 토큰으로 자동 생성된 PR입니다.
+
+        ### 📊 상세정보
+        - **트리거 시간**: ${{ github.event.client_payload.timestamp }}
+        - **브랜치**: ${{ github.event.client_payload.branch }}
+        - **메시지**: ${{ github.event.client_payload.message }}
+
+        ### 🔧 변경된 파일
+        - \`style-dictionary/tokens.json\`: 새로운 디자인 토큰
+        - \`styles/variables.css\`: 자동 생성된 CSS 변수
+
+        ### ✅ 체크리스트
+        - [x] 디자인 토큰 JSON 파일 업데이트
+        - [x] CSS 변수 자동 생성 완료
+        - [x] 빌드 검증 완료
+
+        ---
+        🤖 이 PR은 자동으로 생성되었습니다." \
+          --base main \
+          --head $BRANCH_NAME \
+          --label "design-tokens,auto-generated"
+        
+        echo "✅ PR 생성 완료"
+
+    - name: Handle no changes case
+      if: steps.check_branch.outputs.branch_exists == 'true' && steps.check_branch.outputs.has_changes == 'false'
+      run: |
+        echo "ℹ️ 변경사항이 없어 PR을 생성하지 않았습니다."
+        
+    - name: Handle missing branch case
+      if: steps.check_branch.outputs.branch_exists == 'false'
+      run: |
+        echo "❌ 브랜치 '${{ github.event.client_payload.branch }}'를 찾을 수 없습니다." 
