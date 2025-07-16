@@ -60,8 +60,8 @@ jobs:
       run: |
         BRANCH_NAME="${{ github.event.client_payload.branch }}"
         
-        # PR 생성
-        gh pr create \
+        # PR 생성 (라벨 없이)
+        PR_URL=$(gh pr create \
           --title "🎨 디자인 토큰 자동 업데이트" \
           --body "## 📋 변경사항
         업로드된 디자인 토큰으로 자동 생성된 PR입니다.
@@ -83,10 +83,13 @@ jobs:
         ---
         🤖 이 PR은 자동으로 생성되었습니다." \
           --base main \
-          --head $BRANCH_NAME \
-          --label "design-tokens,auto-generated"
+          --head $BRANCH_NAME)
         
-        echo "✅ PR 생성 완료"
+        echo "✅ PR 생성 완료: $PR_URL"
+        
+        # 라벨 추가 시도 (실패해도 무시)
+        echo "라벨 추가 시도..."
+        gh pr edit $PR_URL --add-label "design-tokens,auto-generated" || echo "⚠️ 라벨 추가 실패 (무시)"
 
     - name: Handle no changes case
       if: steps.check_branch.outputs.branch_exists == 'true' && steps.check_branch.outputs.has_changes == 'false'
