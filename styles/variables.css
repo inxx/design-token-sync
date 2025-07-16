@@ -325,7 +325,7 @@
   --typography-bold-h6-heading-paragraph-indent: 0;
   --typography-bold-h6-heading-paragraph-spacing: 0;
   --typography-bold-h6-heading-text-case: none;
-  --typography-extrabold-h1-heading-font-size: 40rem;
+  --typography-extrabold-h1-heading-font-size: 20rem;
   --typography-extrabold-h1-heading-text-decoration: none;
   --typography-extrabold-h1-heading-font-family: Inter;
   --typography-extrabold-h1-heading-font-weight: 800;
@@ -416,7 +416,7 @@
   --typography-diplay-heading-4-semibold-font-size: 52rem;
   --typography-diplay-heading-4-semibold-text-decoration: none;
   --typography-diplay-heading-4-semibold-font-family: Inter;
-  --typography-diplay-heading-4-semibold-font-weight: 700;
+  --typography-diplay-heading-4-semibold-font-weight: 800;
   --typography-diplay-heading-4-semibold-font-style: normal;
   --typography-diplay-heading-4-semibold-font-stretch: normal;
   --typography-diplay-heading-4-semibold-letter-spacing: 0;
@@ -561,10 +561,4 @@
   --typography-semi-bold-h6-heading-font-family: Inter;
   --typography-semi-bold-h6-heading-font-weight: 600;
   --typography-semi-bold-h6-heading-font-style: normal;
-  --typography-semi-bold-h6-heading-font-stretch: normal;
-  --typography-semi-bold-h6-heading-letter-spacing: 0;
-  --typography-semi-bold-h6-heading-line-height: 19.2rem;
-  --typography-semi-bold-h6-heading-paragraph-indent: 0;
-  --typography-semi-bold-h6-heading-paragraph-spacing: 0;
-  --typography-semi-bold-h6-heading-text-case: none;
 }
