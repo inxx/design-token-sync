@@ -4,6 +4,10 @@ on:
   repository_dispatch:
     types: [update-design-tokens]
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   create-pr:
     runs-on: ubuntu-latest
@@ -12,23 +16,63 @@ jobs:
       uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+        ref: ${{ github.event.client_payload.branch }}
 
     - name: Set safe.directory
       run: |
         git config --global --add safe.directory /home/runner/work/design-token-sync/design-token-sync
 
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Check for changes
+      id: check_changes
+      run: |
+        if git diff --quiet HEAD origin/main; then
+          echo "no_changes=true" >> $GITHUB_OUTPUT
+        else
+          echo "no_changes=false" >> $GITHUB_OUTPUT
+        fi
+
     - name: Create Pull Request
+      if: steps.check_changes.outputs.no_changes == 'false'
       uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: 'feat: update design tokens'
-        title: '디자인 토큰 자동 업데이트'
+        title: '🎨 디자인 토큰 자동 업데이트'
         body: |
+          ## 📋 변경사항
           업로드된 디자인 토큰으로 자동 생성된 PR입니다.
 
-          트리거 시간: ${{ github.event.client_payload.timestamp }}
-          브랜치: ${{ github.event.client_payload.branch }}
-          메시지: ${{ github.event.client_payload.message }}
+          ### 📊 상세정보
+          - **트리거 시간**: ${{ github.event.client_payload.timestamp }}
+          - **브랜치**: ${{ github.event.client_payload.branch }}
+          - **메시지**: ${{ github.event.client_payload.message }}
+
+          ### 🔧 변경된 파일
+          - `style-dictionary/tokens.json`: 새로운 디자인 토큰
+          - `styles/variables.css`: 자동 생성된 CSS 변수
+
+          ### ✅ 체크리스트
+          - [x] 디자인 토큰 JSON 파일 업데이트
+          - [x] CSS 변수 자동 생성 완료
+          - [x] 빌드 검증 완료
+
+          ---
+          🤖 이 PR은 자동으로 생성되었습니다.
         branch: ${{ github.event.client_payload.branch }}
         base: main
-        delete-branch: true 
+        delete-branch: true
+        labels: |
+          design-tokens
+          auto-generated
+
+    - name: No changes detected
+      if: steps.check_changes.outputs.no_changes == 'true'
+      run: |
+        echo "변경사항이 없어 PR을 생성하지 않습니다."
+        exit 0 

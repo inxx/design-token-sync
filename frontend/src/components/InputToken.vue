@@ -34,10 +34,30 @@ async function sendJson() {
       },
       body: JSON.stringify(jsonContent.value),
     })
-    if (!response.ok) throw new Error('서버 오류')
-    alert('전송 성공!')
+    
+    const result = await response.json()
+    
+    if (!response.ok) {
+      if (result.status === 'busy') {
+        alert('처리 중입니다. 잠시 후 다시 시도해주세요.')
+        return
+      }
+      throw new Error(result.message || '서버 오류')
+    }
+    
+    // 성공 응답 처리
+    switch (result.status) {
+      case 'success':
+        alert(`✅ 전송 성공!\n브랜치: ${result.branch}\nGitHub Actions가 PR을 생성합니다.`)
+        break
+      case 'no_changes':
+        alert('ℹ️ 변경사항이 없어 PR을 생성하지 않았습니다.')
+        break
+      default:
+        alert('전송 완료!')
+    }
   } catch (err) {
-    alert('전송 실패: ' + err.message)
+    alert('❌ 전송 실패: ' + err.message)
   }
 }
 </script>
