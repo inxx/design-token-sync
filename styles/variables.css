@@ -3,8 +3,8 @@
  */
 
 :root {
-  --color-primary-color: #abcdef;
-  --color-primary-color-dark: #52123c;
+  --color-primary-color: #7749f8;
+  --color-primary-color-dark: #5227cc;
   --color-primary-light: #ebe5fc;
   --color-secondary-color: #6c757d;
   --color-secondary-dark-color: #54595e;
@@ -241,7 +241,7 @@
   --collection-1-colors-cyan-cyan-700: #087990;
   --collection-1-colors-cyan-cyan-800: #055160;
   --collection-1-colors-cyan-cyan-900: #032830;
-  --collection-1-space-spacing-1: 123rem;
+  --collection-1-space-spacing-1: 4rem;
   --collection-1-space-spacing-2: 8rem;
   --collection-1-space-spacing-3: 12rem;
   --collection-1-space-spacing-4: 16rem;
@@ -325,7 +325,7 @@
   --typography-bold-h6-heading-paragraph-indent: 0;
   --typography-bold-h6-heading-paragraph-spacing: 0;
   --typography-bold-h6-heading-text-case: none;
-  --typography-extrabold-h1-heading-font-size: 20rem;
+  --typography-extrabold-h1-heading-font-size: 40rem;
   --typography-extrabold-h1-heading-text-decoration: none;
   --typography-extrabold-h1-heading-font-family: Inter;
   --typography-extrabold-h1-heading-font-weight: 800;
@@ -416,7 +416,7 @@
   --typography-diplay-heading-4-semibold-font-size: 52rem;
   --typography-diplay-heading-4-semibold-text-decoration: none;
   --typography-diplay-heading-4-semibold-font-family: Inter;
-  --typography-diplay-heading-4-semibold-font-weight: 800;
+  --typography-diplay-heading-4-semibold-font-weight: 700;
   --typography-diplay-heading-4-semibold-font-style: normal;
   --typography-diplay-heading-4-semibold-font-stretch: normal;
   --typography-diplay-heading-4-semibold-letter-spacing: 0;
@@ -561,4 +561,10 @@
   --typography-semi-bold-h6-heading-font-family: Inter;
   --typography-semi-bold-h6-heading-font-weight: 600;
   --typography-semi-bold-h6-heading-font-style: normal;
+  --typography-semi-bold-h6-heading-font-stretch: normal;
+  --typography-semi-bold-h6-heading-letter-spacing: 0;
+  --typography-semi-bold-h6-heading-line-height: 19.2rem;
+  --typography-semi-bold-h6-heading-paragraph-indent: 0;
+  --typography-semi-bold-h6-heading-paragraph-spacing: 0;
+  --typography-semi-bold-h6-heading-text-case: none;
 }
